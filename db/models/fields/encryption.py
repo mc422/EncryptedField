@@ -19,7 +19,12 @@ class BaseEncryptedField(models.Field):
 
     def __init__(self, *args, **kwargs):
         self.prefix = kwargs.pop('prefix', '_')
-        super(BaseEncryptedField, self).__init__(*args, **kwargs)
+        max_length = kwargs.get('max_length', 40)
+        mod = max_length % AES.block_size
+        if mod > 0:
+            max_length += (AES.block_size - mod)
+        kwargs['max_length'] = max_length * 2 + len(self.prefix)
+        models.Field.__init__(self, *args, **kwargs)
 
     def get_internal_type(self):
         return 'TextField'
@@ -45,7 +50,6 @@ class BaseEncryptedField(models.Field):
         return self.get_db_prep_value(value, connection=connection)
 
     def to_python(self, value):
-        print 'call to python'
         if value is None or not isinstance(value, types.StringTypes):
             return value
 
